@@ -1,0 +1,170 @@
+PRAGMA foreign_keys=ON;
+
+DROP TABLE IF EXISTS Comment;
+DROP TABLE IF EXISTS GroupChat;
+DROP TABLE IF EXISTS MemberOfGroupChat;
+DROP TABLE IF EXISTS GroupChatReceives;
+DROP TABLE IF EXISTS UserReceives;
+DROP TABLE IF EXISTS Friend;
+DROP TABLE IF EXISTS Block;
+DROP TABLE IF EXISTS PrivacySettings;
+DROP TABLE IF EXISTS Save;
+DROP TABLE IF EXISTS Report;
+DROP TABLE IF EXISTS ReactionToPost;
+DROP TABLE IF EXISTS Story;
+DROP TABLE IF EXISTS FeedPost;
+DROP TABLE IF EXISTS Reel;
+DROP TABLE IF EXISTS Message;
+DROP TABLE IF EXISTS Post;
+DROP TABLE IF EXISTS User;
+
+CREATE TABLE User (
+    username TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    password TEXT NOT NULL,
+    birthDate DATE NOT NULL,
+    profilePictureLink TEXT,
+    activityStatus TEXT CHECK(activityStatus in ('online', 'offline')),
+    CHECK(LENGTH(username) >= 5),
+    CHECK(LENGTH(password) >= 5)
+);
+
+CREATE TABLE GroupChat (
+    groupID INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    profilePictureLink TEXT,
+    creationDate DATE NOT NULL,
+    administrator TEXT NOT NULL,
+    FOREIGN KEY (administrator) REFERENCES User(username) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE MemberOfGroupChat (
+    groupID INTEGER NOT NULL,
+    member TEXT NOT NULL,
+    PRIMARY KEY (groupID, member),
+    FOREIGN KEY (groupID) REFERENCES GroupChat(groupID) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (member) REFERENCES User(username) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE Message (
+    messageID INTEGER PRIMARY KEY AUTOINCREMENT,
+    sentTime DATETIME NOT NULL,
+    text TEXT NOT NULL,
+    sender TEXT NOT NULL,
+    FOREIGN KEY (sender) REFERENCES User(username) ON DELETE CASCADE ON UPDATE CASCADE,
+    CHECK(LENGTH(text) <= 500)
+);
+
+CREATE TABLE GroupChatReceives (
+    messageID INTEGER PRIMARY KEY,
+    groupID INTEGER NOT NULL,
+    FOREIGN KEY (messageID) REFERENCES Message(messageID) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (groupID) REFERENCES GroupChat(groupID) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE UserReceives (
+    messageID INTEGER PRIMARY KEY,
+    username TEXT NOT NULL,
+    FOREIGN KEY (messageID) REFERENCES Message(messageID) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (username) REFERENCES User(username) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE Friend (
+    username1 TEXT NOT NULL,
+    username2 TEXT NOT NULL,
+    PRIMARY KEY (username1, username2),
+    FOREIGN KEY (username1) REFERENCES User(username) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (username2) REFERENCES User(username) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE Block (
+    blocks TEXT NOT NULL,
+    isBlocked TEXT NOT NULL,
+    PRIMARY KEY (blocks, isBlocked),
+    FOREIGN KEY (blocks) REFERENCES User(username) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (isBlocked) REFERENCES User(username) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE PrivacySettings (
+    username TEXT PRIMARY KEY,
+    profileVisibility TEXT NOT NULL DEFAULT 'public' CHECK(profileVisibility in ('public', 'private', 'friends')),
+    searchVisibility TEXT NOT NULL DEFAULT 'public' CHECK(searchVisibility in ('public', 'private', 'friends')),
+    directMessagePrivacy TEXT NOT NULL DEFAULT 'public' CHECK(directMessagePrivacy in ('public', 'friends')),
+    activityStatusVisibility TEXT NOT NULL DEFAULT 'public' CHECK(activityStatusVisibility in ('public', 'private', 'friends')),
+    cookiesConsent BOOLEAN NOT NULL,
+    FOREIGN KEY (username) REFERENCES User(username) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE Post (
+    postID INTEGER PRIMARY KEY AUTOINCREMENT,
+    videoOrImageLink TEXT NOT NULL,
+    postedTime DATETIME NOT NULL,
+    location TEXT,
+    hashtag TEXT,
+    creator TEXT NOT NULL,
+    FOREIGN KEY (creator) REFERENCES User(username) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE Comment (
+    username TEXT NOT NULL,
+    postID INTEGER NOT NULL,
+    text TEXT NOT NULL,
+    PRIMARY KEY (username, postID),
+    FOREIGN KEY (username) REFERENCES User(username) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (postID) REFERENCES Post(postID) ON DELETE CASCADE ON UPDATE CASCADE,
+    CHECK (LENGTH(text) <= 200)
+);
+
+CREATE TABLE Save (
+    username TEXT NOT NULL,
+    postID INTEGER NOT NULL,
+    PRIMARY KEY (username, postID),
+    FOREIGN KEY (username) REFERENCES User(username) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (postID) REFERENCES Post(postID) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE Report (
+    username TEXT NOT NULL,
+    postID INTEGER NOT NULL,
+    state TEXT NOT NULL CHECK (state in ('Pending', 'Resolved', 'Under Review')),
+    reason TEXT NOT NULL,
+    date DATE NOT NULL,
+    PRIMARY KEY (username, postID),
+    FOREIGN KEY (username) REFERENCES User(username) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (postID) REFERENCES Post(postID) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE ReactionToPost (
+    username TEXT NOT NULL,
+    postID INTEGER NOT NULL,
+    emoji TEXT NOT NULL,
+    PRIMARY KEY (username, postID),
+    FOREIGN KEY (username) REFERENCES User(username) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (postID) REFERENCES Post(postID) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE Story (
+    postID INTEGER PRIMARY KEY,
+    durationInSeconds INTEGER NOT NULL DEFAULT 30,
+    lifetimeInHours INTEGER NOT NULL DEFAULT 24,
+    FOREIGN KEY (postID) REFERENCES Post(postID) ON DELETE CASCADE ON UPDATE CASCADE,
+    CHECK (durationInSeconds <= 60),
+    CHECK (lifetimeInHours <= 24)
+);
+
+CREATE TABLE FeedPost (
+    postID INTEGER PRIMARY KEY,
+    caption TEXT,
+    FOREIGN KEY (postID) REFERENCES Post(postID) ON DELETE CASCADE ON UPDATE CASCADE,
+    CHECK (LENGTH(caption) <= 200)
+);
+
+CREATE TABLE Reel (
+    postID INTEGER PRIMARY KEY,
+    durationInSeconds INTEGER NOT NULL,
+    caption TEXT,
+    FOREIGN KEY (postID) REFERENCES Post(postID) ON DELETE CASCADE ON UPDATE CASCADE,
+    CHECK (LENGTH(caption) <= 200),
+    CHECK (durationInSeconds <= 300)
+);
